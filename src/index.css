@@ -1,0 +1,287 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: dark;
+  --night: #050710;
+  --acid: #c4f36c;
+  --electric: #4f74ff;
+  --indigo: #3a2e8f;
+  --violet: #5b3aa8;
+  --deep-blue: #2446c9;
+}
+
+html {
+  background: var(--night);
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: var(--night);
+  color: #eef1ff;
+  font-family: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+.font-mono-ui {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* ---------- Code layer (behind the image) ---------- */
+.code-backdrop {
+  background: #000;
+  transform: scale(var(--backdrop-zoom, 1));
+  transform-origin: 50% 50%;
+  animation: hero-fade 700ms ease-out 1100ms both;
+}
+/* Same framing as the hero image (HERO_FOCAL in config/content.ts). */
+.code-scene {
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: 62% 50%;
+}
+@media (orientation: portrait) {
+  .code-scene { background-position: 84% 50%; }
+}
+.code-scene--glow {
+  filter: blur(3px);
+  opacity: 0.5;
+}
+
+/* ---------- Atmosphere (sky only) ---------- */
+.atmosphere {
+  mix-blend-mode: screen;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 42%, transparent 66%);
+  mask-image: linear-gradient(to bottom, #000 0%, #000 42%, transparent 66%);
+}
+.atmo-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  will-change: transform;
+}
+.atmo-a {
+  width: 62vw; height: 44vh; left: -12vw; top: -6vh;
+  background: radial-gradient(closest-side, var(--indigo), transparent);
+  opacity: 0.13;
+  animation: atmo-a 26s ease-in-out infinite alternate;
+}
+.atmo-b {
+  width: 48vw; height: 36vh; left: 38vw; top: 4vh;
+  background: radial-gradient(closest-side, var(--violet), transparent);
+  opacity: 0.1;
+  animation: atmo-b 21s ease-in-out infinite alternate;
+}
+.atmo-c {
+  width: 56vw; height: 40vh; right: -14vw; top: 14vh;
+  background: radial-gradient(closest-side, var(--deep-blue), transparent);
+  opacity: 0.09;
+  animation: atmo-c 30s ease-in-out infinite alternate;
+}
+.atmo-wave {
+  position: absolute;
+  top: 0; left: -50%;
+  width: 200%; height: 60%;
+  background: repeating-linear-gradient(
+    100deg,
+    transparent 0%,
+    rgba(91, 58, 168, 0.55) 7%,
+    transparent 14%,
+    rgba(36, 70, 201, 0.45) 22%,
+    transparent 30%
+  );
+  filter: blur(28px);
+  opacity: 0.07;
+  animation: atmo-wave 28s ease-in-out infinite alternate;
+  will-change: transform;
+}
+@keyframes atmo-a { to { transform: translate3d(8vw, 3vh, 0) scale(1.12); } }
+@keyframes atmo-b { to { transform: translate3d(-6vw, 4vh, 0) scale(0.9); } }
+@keyframes atmo-c { to { transform: translate3d(-9vw, -3vh, 0) scale(1.08); } }
+@keyframes atmo-wave { to { transform: translate3d(12%, 2%, 0); } }
+
+/* ---------- Legibility ---------- */
+.hero-scrim {
+  z-index: 10;
+  background:
+    linear-gradient(to bottom, rgba(3, 5, 14, 0.55), transparent 16%),
+    radial-gradient(120% 70% at 0% 100%, rgba(3, 5, 14, 0.82) 0%, rgba(3, 5, 14, 0.45) 38%, transparent 64%);
+}
+@media (orientation: portrait) {
+  .hero-scrim {
+    background:
+      linear-gradient(to bottom, rgba(3, 5, 14, 0.55), transparent 14%),
+      linear-gradient(to top, rgba(3, 5, 14, 0.88) 0%, rgba(3, 5, 14, 0.5) 30%, transparent 55%);
+  }
+}
+
+.hero-copy {
+  position: relative;
+}
+.hero-copy::before {
+  content: '';
+  position: absolute;
+  inset: -22% -30% -30% -40%;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(closest-side, rgba(3, 5, 14, 0.72), rgba(3, 5, 14, 0.35) 60%, transparent);
+  filter: blur(8px);
+}
+
+.status-dot::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border: 1px solid var(--acid);
+  opacity: 0;
+  animation: status-ping 2.4s ease-out infinite;
+}
+@keyframes status-ping {
+  0% { opacity: 0.7; transform: scale(0.6); }
+  100% { opacity: 0; transform: scale(1.8); }
+}
+
+/* ---------- Scroll transition ---------- */
+[data-disintegrating] .hero-image-layer {
+  visibility: hidden;
+}
+
+/* ---------- Orbit carousel ---------- */
+.orbit {
+  height: 100dvh;
+  touch-action: pan-y;
+  cursor: grab;
+}
+.orbit[data-dragging] { cursor: grabbing; }
+
+.orbit-fade {
+  background: linear-gradient(to bottom, rgba(110, 150, 40, 0), rgba(110, 150, 40, 0.22));
+}
+.orbit-labels {
+  padding: 0 20px calc(16px + env(safe-area-inset-bottom));
+  font-size: 8px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(7, 10, 20, 0.75);
+}
+@media (min-width: 640px) {
+  .orbit-labels { padding: 0 40px 22px; font-size: 10px; }
+}
+@media (min-width: 1024px) {
+  .orbit-labels { padding: 0 56px 26px; }
+}
+
+/* ---------- Section blend (projects → manifesto) ---------- */
+/* Starts at the exact tone the projects section ends on (lime + its bottom fade) and eases
+   to black with a smoothstep curve (flat ends, so no visible seam at either edge). */
+.section-blend {
+  background: linear-gradient(
+    to bottom,
+    rgba(177, 223, 93, 1.000) 0.0%,
+    rgba(175, 221, 92, 1.000) 6.2%,
+    rgba(170, 214, 90, 1.000) 12.5%,
+    rgba(161, 203, 86, 1.000) 18.8%,
+    rgba(150, 189, 81, 1.000) 25.0%,
+    rgba(137, 173, 75, 1.000) 31.2%,
+    rgba(123, 155, 69, 1.000) 37.5%,
+    rgba(107, 135, 62, 1.000) 43.8%,
+    rgba(91, 115, 54, 1.000) 50.0%,
+    rgba(75, 95, 47, 1.000) 56.2%,
+    rgba(59, 75, 40, 0.989) 62.5%,
+    rgba(45, 57, 34, 0.877) 68.8%,
+    rgba(32, 41, 28, 0.684) 75.0%,
+    rgba(21, 27, 23, 0.453) 81.2%,
+    rgba(12, 16, 19, 0.232) 87.5%,
+    rgba(7, 9, 17, 0.066) 93.8%,
+    rgba(5, 7, 16, 0.000) 100.0%
+  );
+}
+/* Fine grain breaks up 8-bit banding in the long gradient. */
+.section-blend::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.07;
+  mix-blend-mode: overlay;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 35%, transparent 70%);
+  mask-image: linear-gradient(to bottom, #000 0%, #000 35%, transparent 70%);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ---------- Scroll cue ---------- */
+.scroll-cue__arrows {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid rgba(196, 243, 108, 0.45);
+  border-radius: 999px;
+  transition: border-color 200ms, background-color 200ms;
+}
+.scroll-cue:hover .scroll-cue__arrows {
+  border-color: #c4f36c;
+  background: rgba(196, 243, 108, 0.08);
+}
+.scroll-cue__arrow {
+  width: 12px;
+  height: 8px;
+  fill: none;
+  stroke: #c4f36c;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  animation: cue-drop 1.8s cubic-bezier(0.45, 0, 0.2, 1) infinite;
+}
+.scroll-cue__arrow + .scroll-cue__arrow {
+  margin-top: -2px;
+  animation-delay: 0.18s;
+}
+@keyframes cue-drop {
+  0% { opacity: 0; transform: translateY(-5px); }
+  35% { opacity: 1; }
+  70% { opacity: 1; transform: translateY(4px); }
+  100% { opacity: 0; transform: translateY(7px); }
+}
+
+/* ---------- Entrance ---------- */
+.hero-enter-image {
+  transform-origin: 72% 55%;
+  animation: hero-zoom 1800ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.hero-enter-content {
+  animation: hero-rise 1000ms cubic-bezier(0.16, 1, 0.3, 1) 350ms both;
+}
+.hero-enter-nav {
+  animation: hero-fade 900ms ease-out 600ms both;
+}
+@keyframes hero-zoom {
+  from { opacity: 0; transform: scale(1.07); }
+  35% { opacity: 1; }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes hero-rise {
+  from { opacity: 0; transform: translate3d(0, 18px, 0); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes hero-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .hero-enter-image,
+  .hero-enter-content,
+  .hero-enter-nav {
+    animation: hero-fade 400ms ease-out both;
+  }
+  .atmo-blob,
+  .scroll-cue__arrow,
+  .atmo-wave,
+  .status-dot::after {
+    animation: none;
+  }
+}
