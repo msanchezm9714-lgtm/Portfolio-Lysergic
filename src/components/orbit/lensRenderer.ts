@@ -80,6 +80,10 @@ export class LensRenderer {
   private hasTexture = false
   private readonly bg: [number, number, number]
 
+  get maxTextureSize(): number {
+    return this.gl.getParameter(this.gl.MAX_TEXTURE_SIZE) as number
+  }
+
   static create(canvas: HTMLCanvasElement, bgHex: string): LensRenderer | null {
     const gl = canvas.getContext('webgl2', { antialias: false, alpha: false, premultipliedAlpha: false })
     if (!gl) return null

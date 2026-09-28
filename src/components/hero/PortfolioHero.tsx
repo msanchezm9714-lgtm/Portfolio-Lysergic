@@ -1,7 +1,6 @@
 import { useRef, useState } from 'react'
 import { HERO_CONTENT, LIME_SECTION, SCROLL_CONFIG } from '../../config/content'
 import { LimeContent, LimeSection, LIME_TITLE_ID } from '../LimeSection'
-import { useHasHover } from '../../hooks/useHasHover'
 import { useReducedMotion } from '../../hooks/useReducedMotion'
 import { AtmosphereOverlay } from './AtmosphereOverlay'
 import { CodeBackdrop } from './CodeBackdrop'
@@ -20,7 +19,6 @@ export function PortfolioHero() {
   const nextInnerRef = useRef<HTMLDivElement>(null)
   const [nextVisible, setNextVisible] = useState(false)
   const reducedMotion = useReducedMotion()
-  const hasHover = useHasHover()
   const { title, descriptor, scrollCue } = HERO_CONTENT
 
   // Scroll to the end of the hero transition, where the projects section is fully open.
@@ -28,7 +26,7 @@ export function PortfolioHero() {
     const track = trackRef.current
     if (!track) return
     const top = track.getBoundingClientRect().top + window.scrollY
-    window.scrollTo({ top: top + track.offsetHeight - window.innerHeight, behavior: reducedMotion ? 'auto' : 'smooth' })
+    window.scrollTo({ top: top + track.offsetHeight - (sectionRef.current?.clientHeight ?? window.innerHeight), behavior: reducedMotion ? 'auto' : 'smooth' })
   }
 
   return (
@@ -42,10 +40,10 @@ export function PortfolioHero() {
       <section
         ref={sectionRef}
         aria-labelledby="hero-title"
-        className="sticky top-0 isolate h-dvh w-full overflow-hidden bg-[#050710]"
+        className="sticky top-0 isolate h-lvh w-full overflow-hidden bg-[#050710]"
       >
         <CodeBackdrop />
-        <CodeReveal interactionRef={sectionRef} reducedMotion={reducedMotion} hasHover={hasHover} />
+        <CodeReveal interactionRef={sectionRef} reducedMotion={reducedMotion} />
         <AtmosphereOverlay />
         <div aria-hidden="true" className="hero-scrim pointer-events-none absolute inset-0" />
         {!reducedMotion && (
@@ -75,7 +73,7 @@ export function PortfolioHero() {
         <div ref={uiRef} className="absolute inset-0 z-20">
           <HeroNavigation />
 
-          <div className="flex h-full flex-col justify-end px-5 pb-10 pt-28 sm:px-10 sm:pb-14 lg:px-14 lg:pb-16">
+          <div className="hero-bottom-safe flex h-full flex-col justify-end px-5 pt-28 sm:px-10 lg:px-14">
             <div className="hero-enter-content hero-copy isolate max-w-[34rem]">
               <p className="font-mono-ui flex items-center gap-2.5 text-[11px] uppercase tracking-[0.26em] text-[#c4f36c]">
                 <span aria-hidden="true" className="inline-block h-1.5 w-1.5 bg-[#c4f36c]" />

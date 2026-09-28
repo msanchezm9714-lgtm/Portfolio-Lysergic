@@ -56,7 +56,8 @@ export function ScrollDisintegration({
     const update = () => {
       raf = 0
       const rect = track.getBoundingClientRect()
-      const total = rect.height - window.innerHeight
+      // section height (100lvh) rather than innerHeight: it doesn't change with the mobile toolbar
+      const total = rect.height - section.clientHeight
       const p = total > 0 ? clamp01(-rect.top / total) : 0
       if (p === lastP) return
       lastP = p
@@ -88,11 +89,15 @@ export function ScrollDisintegration({
     const schedule = () => {
       if (!raf) raf = requestAnimationFrame(update)
     }
+    let lastW = 0
+    let lastH = 0
     const layout = () => {
       if (!engine || !image) return
       const w = canvas.clientWidth
       const h = canvas.clientHeight
-      if (!w || !h) return
+      if (!w || !h || (w === lastW && h === lastH)) return
+      lastW = w
+      lastH = h
       engine.resize(w, h, image, h >= w ? HERO_FOCAL.portrait : HERO_FOCAL.landscape)
       lastP = -1
       schedule()

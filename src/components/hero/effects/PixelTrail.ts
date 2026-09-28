@@ -52,8 +52,6 @@ export class PixelTrail {
   private readonly cs = EFFECT_CONFIG.cellSize
 
   private base: HTMLCanvasElement | null = null
-  private w = 0
-  private h = 0
   private dpr = 1
   private cols = 0
   private rows = 0
@@ -83,8 +81,6 @@ export class PixelTrail {
 
   resize(w: number, h: number, image: HTMLImageElement, focal: Focal) {
     const cs = this.cs
-    this.w = w
-    this.h = h
     this.dpr = Math.min(window.devicePixelRatio || 1, EFFECT_CONFIG.maxDPR)
     this.cols = Math.ceil(w / cs)
     this.rows = Math.ceil(h / cs)
@@ -150,31 +146,6 @@ export class PixelTrail {
       this.side[i] = `rgb(${(r * 0.38) | 0},${(g * 0.4) | 0},${Math.min(255, b * 0.62 + 22) | 0})`
       this.edge[i] = `rgb(${Math.min(255, r * 1.25 + 30) | 0},${Math.min(255, g * 1.25 + 30) | 0},${Math.min(255, b * 1.2 + 30) | 0})`
     }
-  }
-
-  // Static, partially opened clusters for devices without a hover-capable pointer.
-  seedStatic(clusters: { x: number; y: number; r: number }[]) {
-    this.floor.fill(0)
-    for (const cl of clusters) {
-      const cx = cl.x * this.w
-      const cy = cl.y * this.h
-      const R = cl.r * Math.min(this.w, this.h)
-      this.forCellsInRadius(cx, cy, R * 1.2, (i, d, ang) => {
-        const blob = 1 + 0.14 * Math.sin(3 * ang + cl.x * 10) + 0.08 * Math.sin(5 * ang)
-        const reff = R * blob * (0.75 + 0.25 * this.rand[i])
-        const v = Math.min(1, (reff - d) / (R * 0.5))
-        if (v <= 0) return
-        this.floor[i] = Math.max(this.floor[i], v)
-      })
-    }
-    for (let i = 0; i < this.floor.length; i++) {
-      if (this.floor[i] > 0) {
-        this.heat[i] = this.open[i] = this.floor[i]
-        this.active.add(i)
-      }
-    }
-    this.prevDirty = null
-    this.drawFull()
   }
 
   pointerMove(x: number, y: number) {

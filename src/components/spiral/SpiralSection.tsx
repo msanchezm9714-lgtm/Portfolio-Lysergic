@@ -14,6 +14,7 @@ const smooth = (a: number, b: number, v: number) => {
 
 export function SpiralSection() {
   const trackRef = useRef<HTMLDivElement>(null)
+  const sectionRef = useRef<HTMLElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const labelRef = useRef<HTMLHeadingElement>(null)
   const fadeRef = useRef<HTMLDivElement>(null)
@@ -23,31 +24,32 @@ export function SpiralSection() {
   useEffect(() => {
     const track = trackRef.current
     const canvas = canvasRef.current
-    if (!track || !canvas) return
+    const section = sectionRef.current
+    if (!track || !canvas || !section) return
     const renderer = SpiralRenderer.create(canvas, BG)
     if (!renderer) {
       setSupported(false)
       return
     }
-    const nav = navigator as Navigator & { deviceMemory?: number }
-    const lowEnd = (navigator.hardwareConcurrency ?? 8) <= 4 || (nav.deviceMemory ?? 8) <= 4
-    const dpr = Math.min(window.devicePixelRatio || 1, lowEnd ? 1.25 : 2)
+    const dpr = Math.min(window.devicePixelRatio || 1, 2)
     let disposed = false
     let ready = false
     let raf = 0
     let running = false
     let inView = false
     let start = 0
+    let lastTime = 0
     let w = 0
     let h = 0
 
     const progress = () => {
       const rect = track.getBoundingClientRect()
-      const total = rect.height - window.innerHeight
+      // stable section height (100lvh) so the mobile toolbar can't make progress jump
+      const total = rect.height - section.clientHeight
       return total > 0 ? clamp01(-rect.top / total) : 0
     }
     // 0 when the section's top edge enters the screen, 1 once it reaches the top (pinned).
-    const entry = () => clamp01(1 - track.getBoundingClientRect().top / window.innerHeight)
+    const entry = () => clamp01(1 - track.getBoundingClientRect().top / section.clientHeight)
 
     const render = (time: number) => {
       if (!ready || !w || !h) return
@@ -76,7 +78,7 @@ export function SpiralSection() {
         // Position of the label inside the lime→black blend (0 = lime top, 1 = fully black).
         const rect = track.getBoundingClientRect()
         const labelY = Math.max(rect.top, 0) + 30
-        const k = smooth(0.25, 0.6, (labelY - rect.top) / (window.innerHeight * 0.4))
+        const k = smooth(0.25, 0.6, (labelY - rect.top) / (section.clientHeight * 0.4))
         const mixc = (a: number, b: number) => Math.round(a + (b - a) * k)
         labelRef.current.style.color = `rgb(${mixc(5, 196)}, ${mixc(7, 243)}, ${mixc(16, 108)})`
       }
@@ -86,8 +88,9 @@ export function SpiralSection() {
     const tick = (now: number) => {
       raf = 0
       if (!running) return
-      if (!start) start = now
-      render((now - start) / 1000)
+      if (!start) start = now - lastTime * 1000
+      lastTime = (now - start) / 1000
+      render(lastTime)
       raf = requestAnimationFrame(tick)
     }
     const setRunning = () => {
@@ -99,12 +102,18 @@ export function SpiralSection() {
     }
 
     const layout = () => {
-      w = canvas.clientWidth
-      h = canvas.clientHeight
-      if (!w || !h) return
-      canvas.width = Math.round(w * dpr)
-      canvas.height = Math.round(h * dpr)
-      render(0)
+      const cw = canvas.clientWidth
+      const ch = canvas.clientHeight
+      if (!cw || !ch) return
+      // Resizing clears the canvas: only do it when the size really changed, and redraw
+      // at the current time (not t=0) so the spiral never jumps back to its start pose.
+      if (cw !== w || ch !== h) {
+        w = cw
+        h = ch
+        canvas.width = Math.round(w * dpr)
+        canvas.height = Math.round(h * dpr)
+      }
+      render(lastTime)
     }
 
     document.fonts.ready.then(() => {
@@ -151,9 +160,10 @@ export function SpiralSection() {
         </h2>
       </div>
       <section
+        ref={sectionRef}
         id={SPIRAL_TEXT.id}
         aria-labelledby={`${SPIRAL_TEXT.id}-title`}
-        className="sticky top-0 h-dvh w-full overflow-hidden bg-[#050710]"
+        className="sticky top-0 h-lvh w-full overflow-hidden bg-[#050710]"
       >
         {supported ? (
           <canvas

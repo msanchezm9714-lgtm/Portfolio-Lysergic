@@ -6,20 +6,17 @@ import { PixelTrail } from './effects/PixelTrail'
 interface CodeRevealProps {
   interactionRef: RefObject<HTMLElement | null>
   reducedMotion: boolean
-  hasHover: boolean
 }
 
-// Fixed reveal zones for touch devices (fractions of the hero size).
-const STATIC_CLUSTERS = [
-  { x: 0.2, y: 0.2, r: 0.19 },
-  { x: 0.74, y: 0.07, r: 0.08 },
-]
+const TAP_MAX_MOVE = 10
+const TAP_MAX_MS = 400
+const TAP_REVEAL_MS = 420
 
 /**
  * Hero image rendered through a canvas so its pixels can turn into cubes and flip
  * open. The <img> stays underneath for fast first paint and screen readers.
  */
-export function CodeReveal({ interactionRef, reducedMotion, hasHover }: CodeRevealProps) {
+export function CodeReveal({ interactionRef, reducedMotion }: CodeRevealProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [ready, setReady] = useState(false)
 
@@ -35,6 +32,10 @@ export function CodeReveal({ interactionRef, reducedMotion, hasHover }: CodeReve
     let image: HTMLImageElement | null = null
     let ro: ResizeObserver | null = null
     let resizeRaf = 0
+    let lastW = 0
+    let lastH = 0
+    let tapTimer = 0
+    const tap = { id: -1, x: 0, y: 0, t: 0 }
 
     const frame = (t: number) => {
       raf = 0
@@ -52,9 +53,10 @@ export function CodeReveal({ interactionRef, reducedMotion, hasHover }: CodeReve
       if (!engine || !image) return
       const w = canvas.clientWidth
       const h = canvas.clientHeight
-      if (!w || !h) return
+      if (!w || !h || (w === lastW && h === lastH)) return
+      lastW = w
+      lastH = h
       engine.resize(w, h, image, h >= w ? HERO_FOCAL.portrait : HERO_FOCAL.landscape)
-      if (!hasHover) engine.seedStatic(STATIC_CLUSTERS)
     }
 
     const toLocal = (e: PointerEvent) => {
@@ -64,18 +66,43 @@ export function CodeReveal({ interactionRef, reducedMotion, hasHover }: CodeReve
         y: ((e.clientY - rect.top) / rect.height) * canvas.clientHeight,
       }
     }
+    // Mouse: the reveal follows the cursor. Touch: nothing happens while scrolling; a
+    // quick tap opens a short burst where the finger touched.
     const onMove = (e: PointerEvent) => {
-      if (!engine || target.hasAttribute('data-disintegrating')) return
+      if (e.pointerType !== 'mouse' || !engine || target.hasAttribute('data-disintegrating')) return
       const { x, y } = toLocal(e)
       engine.pointerMove(x, y)
       kick()
     }
-    const onLeave = () => {
+    const onLeave = (e: PointerEvent) => {
+      if (e.pointerType !== 'mouse') return
       engine?.pointerLeave()
       kick()
     }
+    const onDown = (e: PointerEvent) => {
+      if (e.pointerType === 'mouse') return
+      tap.id = e.pointerId
+      tap.x = e.clientX
+      tap.y = e.clientY
+      tap.t = performance.now()
+    }
     const onUp = (e: PointerEvent) => {
-      if (e.pointerType !== 'mouse') onLeave()
+      if (e.pointerType === 'mouse' || e.pointerId !== tap.id || !engine) return
+      tap.id = -1
+      const moved = Math.hypot(e.clientX - tap.x, e.clientY - tap.y)
+      if (moved > TAP_MAX_MOVE || performance.now() - tap.t > TAP_MAX_MS) return
+      if (target.hasAttribute('data-disintegrating')) return
+      const { x, y } = toLocal(e)
+      engine.pointerMove(x, y)
+      kick()
+      window.clearTimeout(tapTimer)
+      tapTimer = window.setTimeout(() => {
+        engine?.pointerLeave()
+        kick()
+      }, TAP_REVEAL_MS)
+    }
+    const onCancel = () => {
+      tap.id = -1
     }
 
     loadImage(HERO_CONTENT.images.heroSrc)
@@ -91,9 +118,9 @@ export function CodeReveal({ interactionRef, reducedMotion, hasHover }: CodeReve
         })
         ro.observe(canvas)
         target.addEventListener('pointermove', onMove, { passive: true })
-        target.addEventListener('pointerdown', onMove, { passive: true })
+        target.addEventListener('pointerdown', onDown, { passive: true })
         target.addEventListener('pointerleave', onLeave)
-        target.addEventListener('pointercancel', onLeave)
+        target.addEventListener('pointercancel', onCancel)
         target.addEventListener('pointerup', onUp)
       })
       .catch(() => {})
@@ -103,13 +130,14 @@ export function CodeReveal({ interactionRef, reducedMotion, hasHover }: CodeReve
       cancelAnimationFrame(raf)
       cancelAnimationFrame(resizeRaf)
       ro?.disconnect()
+      window.clearTimeout(tapTimer)
       target.removeEventListener('pointermove', onMove)
-      target.removeEventListener('pointerdown', onMove)
+      target.removeEventListener('pointerdown', onDown)
       target.removeEventListener('pointerleave', onLeave)
-      target.removeEventListener('pointercancel', onLeave)
+      target.removeEventListener('pointercancel', onCancel)
       target.removeEventListener('pointerup', onUp)
     }
-  }, [interactionRef, reducedMotion, hasHover])
+  }, [interactionRef, reducedMotion])
 
   return (
     <div className="hero-enter-image hero-image-layer absolute inset-0">

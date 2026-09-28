@@ -17,11 +17,6 @@ interface OrbitCarouselProps {
 
 const DRAG_THRESHOLD = 6
 
-function isLowEnd(): boolean {
-  const nav = navigator as Navigator & { deviceMemory?: number }
-  return (navigator.hardwareConcurrency ?? 8) <= 4 || (nav.deviceMemory ?? 8) <= 4
-}
-
 function breakpoint(w: number) {
   return w >= 1024 ? 'desktop' : w >= 640 ? 'tablet' : 'mobile'
 }
@@ -60,8 +55,9 @@ export function OrbitCarousel({
       setSupported(false)
       return
     }
-    const lowEnd = isLowEnd()
-    const dpr = Math.min(window.devicePixelRatio || 1, lowEnd ? 1.25 : 2)
+    // Full resolution everywhere: a single full-screen shader is cheap even on phones
+    // (iOS reports few cores, which used to wrongly drop quality).
+    const dpr = Math.min(window.devicePixelRatio || 1, 2)
     let frame: LensFrame | null = null
     let disposed = false
     let progress = 0
@@ -72,7 +68,6 @@ export function OrbitCarousel({
     let inView = false
     let raf = 0
     let last = 0
-    let acc = 0
     let activeIdx = -1
     let atlasAspect = 0
     const drag = { id: -1, x: 0, lastX: 0, lastT: 0, vel: 0, moved: false }
@@ -93,7 +88,9 @@ export function OrbitCarousel({
     const loadAtlas = (aspect: number) => {
       if (aspect === atlasAspect) return
       atlasAspect = aspect
-      buildCardAtlas(items, aspect).then((atlas) => {
+      // Card texture as sharp as the GPU allows (all cards share one texture row).
+      const cardPx = Math.min(1200, Math.floor(renderer.maxTextureSize / (items.length * aspect)))
+      buildCardAtlas(items, aspect, cardPx).then((atlas) => {
         if (disposed || aspect !== atlasAspect) return
         renderer.setAtlas(atlas)
         render()
@@ -117,15 +114,7 @@ export function OrbitCarousel({
       if (!running) return
       const dt = last ? Math.min(0.05, (now - last) / 1000) : 0
       last = now
-      if (lowEnd) {
-        acc += dt
-        if (acc < 1 / 30) {
-          raf = requestAnimationFrame(tick)
-          return
-        }
-      }
-      const step = lowEnd ? acc : dt
-      acc = 0
+      const step = dt
 
       const target = reducedMotion ? 0 : hovering ? ORBIT_MOTION.hoverSpeed : 1
       speed += (target - speed) * (1 - Math.exp(-step / 0.35))
