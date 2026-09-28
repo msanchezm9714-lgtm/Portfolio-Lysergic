@@ -42,7 +42,9 @@ export class Disintegration {
   private readonly canvas: HTMLCanvasElement
   private readonly ctx: CanvasRenderingContext2D
   private readonly cs = SCROLL_CONFIG.cellSize
-  private base: HTMLCanvasElement | null = null
+  // Drawn straight from the <img> (no full-size copy) to stay within mobile canvas memory.
+  private image: HTMLImageElement | null = null
+  private cover = { dx: 0, dy: 0, dw: 0, dh: 0 }
   private atlas: HTMLCanvasElement | null = null
   private sp = 0
   private w = 0
@@ -76,15 +78,8 @@ export class Disintegration {
     this.rows = Math.ceil(h / cs)
 
     const cover = coverRect(image.naturalWidth, image.naturalHeight, w, h, focal)
-    const base = document.createElement('canvas')
-    base.width = this.canvas.width
-    base.height = this.canvas.height
-    const bctx = base.getContext('2d')
-    if (!bctx) return
-    bctx.imageSmoothingQuality = 'high'
-    bctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0)
-    bctx.drawImage(image, cover.dx, cover.dy, cover.dw, cover.dh)
-    this.base = base
+    this.image = image
+    this.cover = cover
 
     const n = this.cols * this.rows
     this.release = new Float32Array(n)
@@ -177,10 +172,13 @@ export class Disintegration {
     ctx.setTransform(1, 0, 0, 1, 0, 0)
     ctx.globalAlpha = 1
     ctx.clearRect(0, 0, canvas.width, canvas.height)
-    if (p <= 0 || !this.base || !this.atlas) return null
+    if (p <= 0 || !this.image || !this.atlas) return null
 
     // Remaining image: released cells are punched out, revealing the ASCII layer.
-    ctx.drawImage(this.base, 0, 0)
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+    ctx.imageSmoothingQuality = 'high'
+    ctx.drawImage(this.image, this.cover.dx, this.cover.dy, this.cover.dw, this.cover.dh)
+    ctx.setTransform(1, 0, 0, 1, 0, 0)
     const cols = this.cols
     for (let i = 0; i < this.release.length; i++) {
       if (p < this.release[i]) continue

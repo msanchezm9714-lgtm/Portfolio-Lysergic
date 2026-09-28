@@ -1,11 +1,15 @@
 const ACID: [number, number, number] = [196, 243, 108]
 
-export async function loadImage(src: string): Promise<HTMLImageElement> {
-  const img = new Image()
-  img.decoding = 'async'
-  img.src = src
-  await img.decode()
-  return img
+// Waits for `load` rather than `decode()`: decode() can hang while the page is hidden and
+// is flaky on iOS Safari with large images, which left the hero without its canvas.
+export function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.decoding = 'async'
+    img.onload = () => resolve(img)
+    img.onerror = () => reject(new Error(`Could not load ${src}`))
+    img.src = src
+  })
 }
 
 // The source is black glyphs on white: white becomes transparent (the night
@@ -32,5 +36,7 @@ export async function processCodeTexture(src: string): Promise<string> {
 
   ctx.putImageData(data, 0, 0)
   // data: URL rather than blob: so it loads under viewers whose CSP blocks blob images.
-  return canvas.toDataURL('image/png')
+  const url = canvas.toDataURL('image/png')
+  canvas.width = 0 // release the working canvas right away
+  return url
 }

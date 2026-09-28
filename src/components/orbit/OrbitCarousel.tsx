@@ -89,7 +89,8 @@ export function OrbitCarousel({
       if (aspect === atlasAspect) return
       atlasAspect = aspect
       // Card texture as sharp as the GPU allows (all cards share one texture row).
-      const cardPx = Math.min(1200, Math.floor(renderer.maxTextureSize / (items.length * aspect)))
+      const cap = window.matchMedia('(pointer: coarse)').matches ? 1024 : 1200
+      const cardPx = Math.min(cap, Math.floor(renderer.maxTextureSize / (items.length * aspect)))
       buildCardAtlas(items, aspect, cardPx).then((atlas) => {
         if (disposed || aspect !== atlasAspect) return
         renderer.setAtlas(atlas)

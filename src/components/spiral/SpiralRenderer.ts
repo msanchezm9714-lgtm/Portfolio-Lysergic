@@ -151,7 +151,8 @@ export class SpiralRenderer {
   private readonly bg: [number, number, number]
 
   static create(canvas: HTMLCanvasElement, bgHex: string): SpiralRenderer | null {
-    const gl = canvas.getContext('webgl2', { antialias: true, alpha: false })
+    // MSAA only on low-density screens: at 2x it adds a lot of memory for little gain.
+    const gl = canvas.getContext('webgl2', { antialias: (window.devicePixelRatio || 1) < 2, alpha: false })
     if (!gl) return null
     try {
       return new SpiralRenderer(gl, bgHex)
@@ -180,6 +181,7 @@ export class SpiralRenderer {
     gl.bindTexture(gl.TEXTURE_2D, this.tex)
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, text.canvas)
     gl.generateMipmap(gl.TEXTURE_2D)
+    text.canvas.width = 0 // pixels now live in the texture
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)

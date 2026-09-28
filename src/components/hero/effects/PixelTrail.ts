@@ -51,7 +51,10 @@ export class PixelTrail {
   private readonly reducedMotion: boolean
   private readonly cs = EFFECT_CONFIG.cellSize
 
-  private base: HTMLCanvasElement | null = null
+  // The hero image is drawn straight from the <img> (no full-size copy): mobile Safari
+  // caps total canvas memory and a blank canvas here would hide the hero.
+  private image: HTMLImageElement | null = null
+  private cover = { dx: 0, dy: 0, dw: 0, dh: 0 }
   private dpr = 1
   private cols = 0
   private rows = 0
@@ -92,16 +95,9 @@ export class PixelTrail {
     this.canvas.width = Math.round(w * this.dpr)
     this.canvas.height = Math.round(h * this.dpr)
 
-    const base = document.createElement('canvas')
-    base.width = this.canvas.width
-    base.height = this.canvas.height
-    const bctx = base.getContext('2d')
-    if (!bctx) return
     const { dx, dy, dw, dh } = coverRect(image.naturalWidth, image.naturalHeight, w, h, focal)
-    bctx.imageSmoothingQuality = 'high'
-    bctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0)
-    bctx.drawImage(image, dx, dy, dw, dh)
-    this.base = base
+    this.image = image
+    this.cover = { dx, dy, dw, dh }
 
     this.buildCellColors(image, dx, dy, dw, dh)
 
@@ -284,20 +280,39 @@ export class PixelTrail {
     }
   }
 
+  private drawImage() {
+    const { ctx, image, cover, dpr } = this
+    if (!image) return
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+    ctx.imageSmoothingQuality = 'high'
+    ctx.drawImage(image, cover.dx, cover.dy, cover.dw, cover.dh)
+  }
+
   drawFull() {
-    if (!this.base) return
+    if (!this.image) return
     const ctx = this.ctx
     ctx.setTransform(1, 0, 0, 1, 0, 0)
     ctx.globalCompositeOperation = 'source-over'
     ctx.globalAlpha = 1
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height)
-    ctx.drawImage(this.base, 0, 0)
+    this.drawImage()
     this.prevDirty = null
     this.drawCellsAndParticles()
   }
 
+  /** True when the canvas actually holds pixels (it can silently stay blank on low memory). */
+  isPainted(): boolean {
+    try {
+      const x = Math.floor(this.canvas.width / 2)
+      const y = Math.floor(this.canvas.height / 3)
+      return this.ctx.getImageData(x, y, 1, 1).data[3] > 0
+    } catch {
+      return false
+    }
+  }
+
   private drawFrame() {
-    if (!this.base) return
+    if (!this.image) return
     const bbox = this.activeBounds()
     const prev = this.prevDirty
     let dirty: Rect | null = bbox
@@ -318,7 +333,12 @@ export class PixelTrail {
         ctx.globalCompositeOperation = 'source-over'
         ctx.globalAlpha = 1
         ctx.clearRect(x, y, x1 - x, y1 - y)
-        ctx.drawImage(this.base, x, y, x1 - x, y1 - y, x, y, x1 - x, y1 - y)
+        ctx.save()
+        ctx.beginPath()
+        ctx.rect(x, y, x1 - x, y1 - y)
+        ctx.clip()
+        this.drawImage()
+        ctx.restore()
       }
     }
     this.drawCellsAndParticles()

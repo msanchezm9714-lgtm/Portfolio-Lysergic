@@ -57,6 +57,7 @@ export function CodeReveal({ interactionRef, reducedMotion }: CodeRevealProps) {
       lastW = w
       lastH = h
       engine.resize(w, h, image, h >= w ? HERO_FOCAL.portrait : HERO_FOCAL.landscape)
+      setReady(engine.isPainted())
     }
 
     const toLocal = (e: PointerEvent) => {
@@ -111,7 +112,9 @@ export function CodeReveal({ interactionRef, reducedMotion }: CodeRevealProps) {
         image = img
         engine = new PixelTrail(canvas, reducedMotion)
         layout()
-        setReady(true)
+        // Only hide the plain <img> once the canvas has really painted the hero; if the
+        // browser couldn't allocate it (low memory), the photo stays visible instead.
+        setReady(engine.isPainted())
         ro = new ResizeObserver(() => {
           cancelAnimationFrame(resizeRaf)
           resizeRaf = requestAnimationFrame(layout)
@@ -123,7 +126,7 @@ export function CodeReveal({ interactionRef, reducedMotion }: CodeRevealProps) {
         target.addEventListener('pointercancel', onCancel)
         target.addEventListener('pointerup', onUp)
       })
-      .catch(() => {})
+      .catch((err) => console.error('Hero effect failed', err))
 
     return () => {
       disposed = true

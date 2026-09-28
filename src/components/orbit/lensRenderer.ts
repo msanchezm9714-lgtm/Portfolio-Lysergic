@@ -130,6 +130,7 @@ export class LensRenderer {
     const aniso = gl.getExtension('EXT_texture_filter_anisotropic')
     if (aniso) gl.texParameterf(gl.TEXTURE_2D, aniso.TEXTURE_MAX_ANISOTROPY_EXT, 8)
     this.hasTexture = true
+    atlas.width = 0 // pixels now live in the texture: release the 2D canvas memory
   }
 
   draw(f: LensFrame, offset: number, count: number, dpr: number) {
